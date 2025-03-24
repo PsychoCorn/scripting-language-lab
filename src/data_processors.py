@@ -58,3 +58,12 @@ class Normalizer:
     @staticmethod
     def normalize(data: pd.Series) -> pd.Series:
         return data - data.mean()
+
+
+class BaseSeriesBuilder:
+    """
+    Строит опорный ряд
+    """
+    @staticmethod
+    def build(data: list[pd.Series]) -> pd.Series:
+        return sum(data) / len(data)

@@ -19,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("--trend_graphics", type=bool, default=False, help="Нужны ли графики с линиями тренда")
     parser.add_argument("--jump_graphics", type=bool, default=False, help="Нужны ли графики со скачками")
     parser.add_argument("--normalize", type=bool, default=False, help="Нужно ли нормализировать данные")
+    parser.add_argument("--base_series", type=bool, default=False, help="Нужно ли строить опорный временной ряд")
 
     args = parser.parse_args()
 
@@ -33,6 +34,12 @@ if __name__ == "__main__":
     if args.time_column in data.columns:
         data[f'{args.time_column}_microseconds'] = TimeConverter.convert_to_microseconds(data[args.time_column])
         
+        if args.base_series:
+            data['__base'] = BaseSeriesBuilder.build([
+                data[column] for column in args.value_columns if column in data.columns
+            ])
+            args.value_columns = ['__base']
+
         for column in args.value_columns:
             if column in data.columns:
                 if args.normalize:
@@ -43,25 +50,41 @@ if __name__ == "__main__":
                 data[f'{column}_jumps'] = JumpProcessor.detect_jumps(data[f'{column}_filtered'], args.jump_threshold)
 
 
+                graphics_n = sum([args.filtered_graphics, args.trend_graphics, args.jump_graphics])
+
+                if graphics_n == 0:
+                    continue
+
+                fig, axes = plt.subplots(graphics_n, 1, figsize=(10, 5 * graphics_n), squeeze=False)
+                axes = axes.flatten()
+                fig.suptitle(f"Графики для ряда: {column}")
+
+                graphic_idx: int = 0
+
                 if args.filtered_graphics:
-                    orig_line = plt.scatter(data[f'{args.time_column}_microseconds'], data[column], label='Original data')
-                    filtered_line = plt.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filetered data')
-                    plt.legend(handles=[orig_line, filtered_line])
-                    plt.show()
+                    ax = axes[graphic_idx]
+                    ax.scatter(data[f'{args.time_column}_microseconds'], data[column], label='Original data')
+                    ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filtered data')
+                    ax.set_title("Оригинальные и очищенные данные")
+                    ax.legend()
+                    graphic_idx += 1
 
                 if args.trend_graphics:
-                    orig_line = plt.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filetered data')
-                    trend_line, = plt.plot(data[f'{args.time_column}_microseconds'], data[f'{column}_trend'], label='Trend', color='red')
-                    plt.legend(handles=[orig_line, trend_line])
-                    plt.show()
+                    ax = axes[graphic_idx]
+                    ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filtered data')
+                    ax.plot(data[f'{args.time_column}_microseconds'], data[f'{column}_trend'], label='Trend', color='red')
+                    ax.set_title("Линия тренда")
+                    ax.legend()
+                    graphic_idx += 1
 
                 if args.jump_graphics:
-                    plt.scatter(
-                        data[f'{args.time_column}_microseconds'], 
-                        data[f'{column}_filtered'], 
-                        c=data[f'{column}_jumps']
-                    )
-                    plt.show()
+                    ax = axes[graphic_idx]
+                    ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], c=data[f'{column}_jumps'])
+                    ax.set_title("Скачки в данных")
+
+                plt.tight_layout()
+                plt.subplots_adjust(top=0.95)
+                plt.show()
             else:
                 print(f"Ошибка: В файле отсутствует колонка '{column}'")
         
