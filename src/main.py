@@ -32,10 +32,10 @@ if __name__ == "__main__":
         data[args.time_column] = range(len(data))
     
     if args.time_column in data.columns:
-        data[f'{args.time_column}_microseconds'] = TimeConverter.convert_to_microseconds(data[args.time_column])
+        data[f'{args.time_column}_microseconds'] = convert_to_microseconds(data[args.time_column])
         
         if args.base_series:
-            data['__base'] = BaseSeriesBuilder.build([
+            data['__base'] = build_base_series([
                 data[column] for column in args.value_columns if column in data.columns
             ])
             args.value_columns = ['__base']
@@ -43,11 +43,11 @@ if __name__ == "__main__":
         for column in args.value_columns:
             if column in data.columns:
                 if args.normalize:
-                    data[column] = Normalizer.normalize(data[column])
+                    data[column] = normalize(data[column])
 
-                data[f'{column}_filtered'] = OutlierProcessor.remove_outliers(data[column], args.outlier_method, args.outlier_sigma)
-                data[f'{column}_trend'] = TrendProcessor.extract_trend(data[f'{column}_filtered'], args.trend_window, args.trend_poly)
-                data[f'{column}_jumps'] = JumpProcessor.detect_jumps(data[f'{column}_filtered'], args.jump_threshold)
+                data[f'{column}_filtered'] = remove_outliers(data[column], args.outlier_method, args.outlier_sigma)
+                data[f'{column}_trend'] = extract_trend(data[f'{column}_filtered'], args.trend_window, args.trend_poly)
+                data[f'{column}_jumps'] = detect_jumps(data[f'{column}_filtered'], args.jump_threshold)
 
 
                 graphics_n = sum([args.filtered_graphics, args.trend_graphics, args.jump_graphics])
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                     ax = axes[graphic_idx]
                     ax.scatter(data[f'{args.time_column}_microseconds'], data[column], label='Original data')
                     ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filtered data')
-                    ax.set_title("Оригинальные и очищенные данные")
+                    ax.set_title("Оригинальные и очищенные данные", pad=20)
                     ax.legend()
                     graphic_idx += 1
 
@@ -73,17 +73,17 @@ if __name__ == "__main__":
                     ax = axes[graphic_idx]
                     ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], label='Filtered data')
                     ax.plot(data[f'{args.time_column}_microseconds'], data[f'{column}_trend'], label='Trend', color='red')
-                    ax.set_title("Линия тренда")
+                    ax.set_title("Линия тренда", pad=20)
                     ax.legend()
                     graphic_idx += 1
 
                 if args.jump_graphics:
                     ax = axes[graphic_idx]
                     ax.scatter(data[f'{args.time_column}_microseconds'], data[f'{column}_filtered'], c=data[f'{column}_jumps'])
-                    ax.set_title("Скачки в данных")
+                    ax.set_title("Скачки в данных", pad=20)
 
                 plt.tight_layout()
-                plt.subplots_adjust(top=0.95)
+                plt.subplots_adjust(top=0.90)
                 plt.show()
             else:
                 print(f"Ошибка: В файле отсутствует колонка '{column}'")
